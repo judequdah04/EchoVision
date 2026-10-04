@@ -1,4 +1,4 @@
-import sys
+﻿import sys
 sys.path.insert(0, "/workspace/echovision")
 from core.config import ELEVENLABS_API_KEY, GROQ_API_KEY
 from elevenlabs.client import ElevenLabs
@@ -13,7 +13,7 @@ ARABIC_VOICE_ID  = "EXAVITQu4vr4xnSDxMaL"
 
 def translate_to_arabic(text):
     response = _groq.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-120b",
         messages=[{"role":"user","content":f"""أنت مساعد صوتي للمكفوفين. ترجم النص التالي إلى اللغة العربية الفصحى الواضحة والدقيقة.
 يجب أن تكون الترجمة فصحى سليمة وطبيعية وسلسة وأمينة للمعنى الأصلي.
 أعد فقط الترجمة العربية بدون أي إضافات أو شرح.

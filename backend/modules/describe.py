@@ -1,4 +1,4 @@
-import cv2, torch, numpy as np, time, json
+﻿import cv2, torch, numpy as np, time, json
 from PIL import Image
 from concurrent.futures import ThreadPoolExecutor
 import sys
@@ -297,7 +297,7 @@ def run_describe(frames, models):
 
     # 7) LLM — same prompt as Colab describe_scene
     resp = models["groq"].chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-120b",
         messages=[{"role": "user", "content": f"""You are a helpful assistant for blind and visually impaired people.
 
 A blind person has just asked you: "Can you describe the scene around me?"
