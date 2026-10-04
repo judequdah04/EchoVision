@@ -39,3 +39,25 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+backend/echovision/
+
+backend/modules/yolov8n.pt
+
+backend/modules/*.pt
+
+backend/modules/*.bak
+
+backend/core/ffmpeg*
+
+backend/core/__pycache__/
+
+backend/modules/__pycache__/
+
+backend/core/ffmpeg
+
+backend/core/ffmpeg*
+
+backend/core.zip
+
+*.zip
