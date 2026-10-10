@@ -1,5 +1,4 @@
-export const API_BASE_URL = 'https://btclgotb36favc-8000.proxy.runpod.net';
-
+export const API_BASE_URL = 'https://kej33y7kvj4iz4-8000.proxy.runpod.net';
 export const ENDPOINTS = {
   stt:            `${API_BASE_URL}/stt`,
   wakeStt:        `${API_BASE_URL}/wake_stt`,
