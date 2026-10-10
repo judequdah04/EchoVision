@@ -2,9 +2,15 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, KeyboardAvoidingView, Platform,
-  StatusBar, Alert,
+  StatusBar, Alert, ScrollView, ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { colors, spacing, radius, type, touch } from '../theme';
+import EchoVisionLogo from '../components/EchoVisionLogo';
+
+const FS = 2; // maxFontSizeMultiplier for every Text on this screen
  
 export default function SignUpScreen({ navigation }) {
   const [mode, setMode]         = useState('signup'); // 'signup' | 'login' | 'forgot'
@@ -134,173 +140,183 @@ export default function SignUpScreen({ navigation }) {
   const isForgot  = mode === 'forgot';
  
   return (
+    <SafeAreaView style={styles.root} edges={['top', 'bottom', 'left', 'right']}>
     <KeyboardAvoidingView
-      style={styles.root}
+      style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <StatusBar barStyle="light-content" />
- 
-      <View style={styles.logoArea}>
-        <Text style={styles.appName}>EchoVision</Text>
-        <Text style={styles.tagline}>Your AI Vision Assistant</Text>
-      </View>
- 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>
-          {isSignUp ? 'Sign Up' : isLogin ? 'Log In' : 'Forgot Password'}
+
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Logo (mark + wordmark + tagline), centered */}
+        <EchoVisionLogo markWidth={140} />
+
+        {/* Form heading */}
+        <Text style={styles.formTitle} maxFontSizeMultiplier={FS} accessibilityRole="header">
+          {isSignUp ? 'Sign up' : isLogin ? 'Log in' : 'Forgot password'}
         </Text>
- 
+
         {/* Username */}
-        <View style={styles.inputRow}>
-          <Text style={styles.inputIcon}>👤</Text>
+        <Text style={styles.fieldLabel} maxFontSizeMultiplier={FS} importantForAccessibility="no">Username</Text>
+        <View style={styles.field}>
+          <MaterialCommunityIcons name="account" size={20} color={colors.textSecondary}
+            accessible={false} importantForAccessibility="no" />
           <TextInput
             style={styles.input}
             placeholder="Username"
-            placeholderTextColor="rgba(210,160,255,0.4)"
+            placeholderTextColor={colors.textSecondary}
             value={username}
             onChangeText={setUsername}
             autoCapitalize="none"
+            maxFontSizeMultiplier={FS}
+            accessibilityLabel="Username"
           />
         </View>
- 
+
         {/* Password (hidden on forgot) */}
         {!isForgot && (
-          <View style={styles.inputRow}>
-            <Text style={styles.inputIcon}>🔒</Text>
-            <TextInput
-              style={[styles.input, { flex: 1 }]}
-              placeholder="Password"
-              placeholderTextColor="rgba(210,160,255,0.4)"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPass}
-            />
-            <TouchableOpacity onPress={() => setShowPass(!showPass)}>
-              <Text style={styles.showBtn}>{showPass ? 'HIDE' : 'SHOW'}</Text>
-            </TouchableOpacity>
-          </View>
+          <>
+            <Text style={styles.fieldLabel} maxFontSizeMultiplier={FS} importantForAccessibility="no">Password</Text>
+            <View style={styles.field}>
+              <MaterialCommunityIcons name="lock" size={20} color={colors.textSecondary}
+                accessible={false} importantForAccessibility="no" />
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="Password"
+                placeholderTextColor={colors.textSecondary}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPass}
+                maxFontSizeMultiplier={FS}
+                accessibilityLabel="Password"
+                accessibilityHint={isSignUp ? 'At least 6 characters.' : undefined}
+              />
+              <TouchableOpacity
+                style={styles.eyeBtn}
+                onPress={() => setShowPass(!showPass)}
+                accessibilityRole="button"
+                accessibilityLabel={showPass ? 'Hide password' : 'Show password'}
+              >
+                <MaterialCommunityIcons name={showPass ? 'eye-off' : 'eye'} size={22} color={colors.textSecondary}
+                  accessible={false} importantForAccessibility="no" />
+              </TouchableOpacity>
+            </View>
+          </>
         )}
- 
+
         {/* Forgot password link (only on login) */}
         {isLogin && (
-          <TouchableOpacity onPress={() => { setMode('forgot'); setPassword(''); }} style={styles.forgotRow}>
-            <Text style={styles.forgotLink}>Forgot password?</Text>
+          <TouchableOpacity
+            onPress={() => { setMode('forgot'); setPassword(''); }}
+            style={styles.forgotRow}
+            accessibilityRole="button"
+            accessibilityLabel="Forgot password?"
+            accessibilityHint="Opens password reset."
+          >
+            <Text style={styles.linkText} maxFontSizeMultiplier={FS}>Forgot password?</Text>
           </TouchableOpacity>
         )}
- 
+
         {/* Main button */}
         <TouchableOpacity
-          style={[styles.signUpBtn, loading && { opacity: 0.6 }]}
+          style={[styles.primaryBtn, loading && styles.btnBusy]}
           onPress={isSignUp ? handleSignUp : isLogin ? handleLogin : handleForgotPassword}
           disabled={loading}
+          accessibilityRole="button"
+          accessibilityLabel={isSignUp ? 'Sign up' : isLogin ? 'Log in' : 'Reset password'}
+          accessibilityHint={isSignUp
+            ? 'Creates your account and opens setup.'
+            : isLogin ? 'Logs in and opens setup.' : 'Shows how to reset your password.'}
+          accessibilityState={{ disabled: loading, busy: loading }}
         >
-          <Text style={styles.signUpBtnText}>
-            {loading ? '...' : isSignUp ? 'Sign Up' : isLogin ? 'Log In' : 'Reset Password'}
+          {loading ? <ActivityIndicator color={colors.onAccent} /> : null}
+          <Text style={styles.primaryBtnText} maxFontSizeMultiplier={FS}>
+            {loading ? 'Please wait…' : isSignUp ? 'Sign up' : isLogin ? 'Log in' : 'Reset password'}
           </Text>
         </TouchableOpacity>
- 
+
         {/* Switch mode */}
         {isSignUp && (
-          <View style={styles.loginRow}>
-            <Text style={styles.loginText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => { setMode('login'); setPassword(''); }}>
-              <Text style={styles.loginLink}>Log In</Text>
+          <View style={styles.switchRow}>
+            <Text style={styles.switchText} maxFontSizeMultiplier={FS}>Already have an account?</Text>
+            <TouchableOpacity
+              style={styles.switchBtn}
+              onPress={() => { setMode('login'); setPassword(''); }}
+              accessibilityRole="button"
+              accessibilityLabel="Log in"
+              accessibilityHint="Switches to the log in form."
+            >
+              <Text style={styles.linkText} maxFontSizeMultiplier={FS}>Log in</Text>
             </TouchableOpacity>
           </View>
         )}
- 
+
         {(isLogin || isForgot) && (
-          <View style={styles.loginRow}>
-            <Text style={styles.loginText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => { setMode('signup'); setPassword(''); }}>
-              <Text style={styles.loginLink}>Sign Up</Text>
+          <View style={styles.switchRow}>
+            <Text style={styles.switchText} maxFontSizeMultiplier={FS}>Don't have an account?</Text>
+            <TouchableOpacity
+              style={styles.switchBtn}
+              onPress={() => { setMode('signup'); setPassword(''); }}
+              accessibilityRole="button"
+              accessibilityLabel="Sign up"
+              accessibilityHint="Switches to the sign up form."
+            >
+              <Text style={styles.linkText} maxFontSizeMultiplier={FS}>Sign up</Text>
             </TouchableOpacity>
           </View>
         )}
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
- 
+
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: '#0d0020',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 28,
+  root: { flex: 1, backgroundColor: colors.background },
+  flex: { flex: 1 },
+
+  // The one horizontal gutter for the screen
+  content: {
+    flexGrow: 1, justifyContent: 'center',
+    paddingHorizontal: spacing.gutter, paddingVertical: spacing.xl,
   },
-  logoArea: {
-    alignItems: 'center',
-    marginBottom: 28,
+
+  // Form heading: 32pt below the logo
+  formTitle: { ...type.heading, color: colors.textPrimary, marginTop: spacing.xxl, marginBottom: spacing.lg },
+
+  // Fields
+  fieldLabel: { ...type.rowSecondary, color: colors.textSecondary, marginBottom: spacing.sm },
+  field: {
+    minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    backgroundColor: colors.surface, borderRadius: radius.notice,
+    paddingLeft: spacing.lg, marginBottom: spacing.lg,
   },
-  appName: {
-    color: '#fff',
-    fontSize: 30,
-    fontWeight: '800',
-    letterSpacing: 1,
-    textShadowColor: 'rgba(200,100,255,0.7)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 20,
-  },
-  tagline: {
-    color: 'rgba(210,160,255,0.85)',
-    fontSize: 14,
-    marginTop: 6,
-  },
-  card: {
-    width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 20,
-    padding: 24,
-  },
-  cardTitle: {
-    color: '#fff',
-    fontSize: 22,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    marginBottom: 14,
-  },
-  inputIcon: { fontSize: 16, marginRight: 8 },
   input: {
-    flex: 1,
-    color: '#fff',
-    fontSize: 14,
-    paddingVertical: 13,
+    flex: 1, minHeight: 56, color: colors.textPrimary,
+    ...type.rowLabel, fontWeight: '400', paddingRight: spacing.lg,
   },
-  showBtn: {
-    color: 'rgba(200,160,255,0.6)',
-    fontSize: 11,
-    fontWeight: '700',
+  eyeBtn: { width: touch.min, height: touch.min, alignItems: 'center', justifyContent: 'center', marginRight: spacing.xs },
+
+  forgotRow: { alignSelf: 'flex-end', minHeight: touch.min, justifyContent: 'center', marginTop: -spacing.sm },
+
+  // Primary action
+  primaryBtn: {
+    height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
+    backgroundColor: colors.accent, borderRadius: radius.group, marginTop: spacing.sm,
   },
-  forgotRow: { alignItems: 'flex-end', marginTop: -6, marginBottom: 14 },
-  forgotLink: { color: 'rgba(180,130,255,0.8)', fontSize: 12, fontWeight: '600' },
-  signUpBtn: {
-    backgroundColor: '#7c3aed',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: '#7c3aed',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 6,
+  primaryBtnText: { ...type.button, color: colors.onAccent },
+  btnBusy: { opacity: 0.7 },
+
+  // Switch mode
+  switchRow: {
+    flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center',
+    gap: spacing.xs, marginTop: spacing.lg,
   },
-  signUpBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  loginRow: { flexDirection: 'row', justifyContent: 'center' },
-  loginText: { color: 'rgba(200,160,255,0.5)', fontSize: 12 },
-  loginLink: { color: 'rgba(180,130,255,0.9)', fontSize: 12, fontWeight: '700' },
+  switchText: { ...type.rowSecondary, color: colors.textSecondary },
+  switchBtn: { minHeight: touch.min, justifyContent: 'center', paddingHorizontal: spacing.xs },
+  linkText: { ...type.link, fontWeight: '600', color: colors.accent },
 });

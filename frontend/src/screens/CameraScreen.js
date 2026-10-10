@@ -4,6 +4,8 @@ import {
   StatusBar, Vibration,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Audio } from '../audioCompat';
 import * as FileSystem from 'expo-file-system/legacy';
 import {
@@ -11,6 +13,7 @@ import {
   findScan, checkRegistered, openFindWalkWS, playAudioBase64, textToSpeech,
 } from '../api';
 import { API_BASE_URL } from '../config';
+import { colors, spacing, radius, type, touch } from '../theme';
 
 const STATES = {
   WAKE_LISTENING:  'wake_listening',
@@ -742,16 +745,32 @@ export default function CameraScreen({ navigation, route }) {
     }); // end openFindWalkWS().then
   }
 
+  // Display-only config per state: icon + color + ring shape, plus what the screen reader says.
   const btnConfig = {
-    [STATES.WAKE_LISTENING]:  { color: '#1e1040', icon: '👂', label: 'Say "Hey Suji" or tap' },
-    [STATES.LANGUAGE_SELECT]: { color: '#7c3aed', icon: '🌐', label: 'Say English or Arabic' },
-    [STATES.LISTENING]:       { color: '#dc2626', icon: '⏹️', label: 'Listening… tap to stop' },
-    [STATES.PROCESSING]:      { color: '#374151', icon: '⏳', label: 'Processing…' },
-    [STATES.RESPONDING]:      { color: '#059669', icon: '🔊', label: 'Speaking…' },
-    [STATES.FOLLOWUP]:        { color: '#0891b2', icon: '🎙️', label: 'Tap to speak again' },
-    [STATES.WALK]:            { color: '#d97706', icon: '🔍', label: 'Navigating…' },
+    [STATES.WAKE_LISTENING]:  { color: colors.wake,       icon: 'ear-hearing',        ring: 'outline',
+      a11yLabel: 'Talk to Suji',     a11yHint: 'Starts listening for your command.' },
+    [STATES.LANGUAGE_SELECT]: { color: colors.language,   icon: 'translate',          ring: 'double',
+      a11yLabel: 'Talk to Suji',     a11yHint: 'Suji is waiting for you to say English or Arabic.' },
+    [STATES.LISTENING]:       { color: colors.listening,  icon: 'stop',               ring: 'thick',
+      a11yLabel: 'Stop listening',   a11yHint: 'Stops recording and sends your command.' },
+    [STATES.PROCESSING]:      { color: colors.processing, icon: 'timer-sand',         ring: 'dashed',
+      a11yLabel: 'Processing',       a11yHint: 'Please wait. Suji is working on your request.' },
+    [STATES.RESPONDING]:      { color: colors.speaking,   icon: 'volume-high',        ring: 'solid',
+      a11yLabel: 'Suji is speaking', a11yHint: 'Please wait until Suji finishes.' },
+    [STATES.FOLLOWUP]:        { color: colors.followup,   icon: 'microphone',         ring: 'solid',
+      a11yLabel: 'Speak again',      a11yHint: 'Starts listening for another command.' },
+    [STATES.WALK]:            { color: colors.navigating, icon: 'navigation-variant', ring: 'solid',
+      a11yLabel: 'Navigating',       a11yHint: 'Starts listening for a new command.' },
   };
   const btn = btnConfig[status] || btnConfig[STATES.WAKE_LISTENING];
+  const isOutline = btn.ring === 'outline';
+  const ringStyle = {
+    outline: styles.ringOutline,
+    double:  styles.ringSolid,
+    thick:   styles.ringThick,
+    dashed:  styles.ringDashed,
+    solid:   styles.ringSolid,
+  }[btn.ring];
 
   return (
     <View style={styles.root}>
@@ -761,59 +780,114 @@ export default function CameraScreen({ navigation, route }) {
           onCameraReady={() => setCameraReady(true)} />
       ) : (
         <View style={[StyleSheet.absoluteFill, styles.noCamera]}>
-          <TouchableOpacity onPress={reqCamPerm}>
-            <Text style={styles.noCameraText}>Tap to grant camera permission</Text>
+          <TouchableOpacity
+            style={styles.permBtn}
+            onPress={reqCamPerm}
+            accessibilityRole="button"
+            accessibilityLabel="Allow camera access"
+            accessibilityHint="Opens the permission prompt so Suji can see through the camera."
+          >
+            <MaterialCommunityIcons name="camera-off" size={32} color={colors.primary}
+              accessible={false} importantForAccessibility="no" />
+            <Text style={styles.permBtnText}>Tap to allow camera access</Text>
           </TouchableOpacity>
         </View>
       )}
-      <View style={styles.overlay} pointerEvents="none" />
-      <View style={styles.topBar}>
-        <TouchableOpacity style={styles.topBtn} onPress={() => { cleanup(); navigation.navigate('Setup', { language: getLang() }); }}>
-          <Text style={styles.topBtnText}>⚙️ Setup</Text>
-        </TouchableOpacity>
-        <Text style={styles.langLabel}>{language ? (language === 'arabic' ? 'AR' : 'EN') : '?'}</Text>
-      </View>
-      {statusText ? (
-        <View style={styles.statusBubble}>
-          <Text style={styles.statusText}>{statusText}</Text>
+
+      {/* Top left: back to the previous (setup) screen */}
+      <SafeAreaView style={styles.topSafe} edges={['top', 'left']} pointerEvents="box-none">
+        <View style={styles.topBar} pointerEvents="box-none">
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => { cleanup(); navigation.navigate('Setup', { language: getLang() }); }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            accessibilityHint="Stops listening and goes back to the setup screen."
+          >
+            <MaterialCommunityIcons name="arrow-left" size={24} color={colors.text}
+              accessible={false} importantForAccessibility="no" />
+          </TouchableOpacity>
         </View>
-      ) : null}
-      <View style={styles.focusBox} pointerEvents="none" />
-      {status === STATES.WALK && walkInfo ? (
-        <View style={styles.walkBadge}><Text style={styles.walkText}>🔍 {walkInfo}</Text></View>
-      ) : null}
-      <View style={styles.bottomBar}>
-        <Text style={styles.btnLabel}>{btn.label}</Text>
-        <TouchableOpacity
-          style={[styles.micBtn, { backgroundColor: btn.color },
-            status === STATES.LISTENING && styles.micBtnListening]}
-          onPress={handleMicPress}
-          disabled={status === STATES.PROCESSING || status === STATES.RESPONDING}
-        >
-          <Text style={styles.micIcon}>{btn.icon}</Text>
-        </TouchableOpacity>
-      </View>
+      </SafeAreaView>
+
+      {/* Bottom center: the one main button, pinned to the bottom edge */}
+      <SafeAreaView style={styles.bottomSafe} edges={['bottom']} pointerEvents="box-none">
+        <View style={styles.bottomArea} pointerEvents="box-none">
+          <View
+            style={[styles.micHalo, btn.ring === 'double' && { borderColor: btn.color }]}
+            pointerEvents="box-none"
+          >
+            <TouchableOpacity
+              style={[
+                styles.micBtn,
+                ringStyle,
+                isOutline
+                  ? { backgroundColor: colors.surface, borderColor: btn.color }
+                  : { backgroundColor: btn.color },
+              ]}
+              onPress={handleMicPress}
+              disabled={status === STATES.PROCESSING || status === STATES.RESPONDING}
+              accessibilityRole="button"
+              accessibilityLabel={btn.a11yLabel}
+              accessibilityHint={btn.a11yHint}
+              accessibilityState={{ disabled: status === STATES.PROCESSING || status === STATES.RESPONDING }}
+            >
+              <MaterialCommunityIcons
+                name={btn.icon}
+                size={40}
+                color={isOutline ? btn.color : colors.ink}
+                accessible={false}
+                importantForAccessibility="no"
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaView>
     </View>
   );
 }
 
+const MIC_HALO_GAP = 4;
+
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#000' },
-  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.15)' },
-  noCamera: { backgroundColor: '#0a0a14', alignItems: 'center', justifyContent: 'center' },
-  noCameraText: { color: 'rgba(200,160,255,0.7)', fontSize: 15 },
-  topBar: { position: 'absolute', top: 50, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, zIndex: 10 },
-  topBtn: { backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
-  topBtnText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-  langLabel: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  statusBubble: { position: 'absolute', top: 110, left: 16, right: 16, backgroundColor: 'rgba(0,0,0,0.65)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', borderRadius: 12, padding: 12, zIndex: 8 },
-  statusText: { color: '#fff', fontSize: 14, lineHeight: 20, textAlign: 'center' },
-  focusBox: { position: 'absolute', top: '50%', left: '50%', width: 120, height: 120, marginTop: -60, marginLeft: -60, borderWidth: 1.5, borderColor: 'rgba(251,191,36,0.7)', borderRadius: 4 },
-  walkBadge: { position: 'absolute', bottom: 180, alignSelf: 'center', backgroundColor: 'rgba(217,119,6,0.2)', borderWidth: 1, borderColor: 'rgba(251,191,36,0.4)', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 },
-  walkText: { color: '#fbbf24', fontSize: 13, fontWeight: '600' },
-  bottomBar: { position: 'absolute', bottom: 50, left: 0, right: 0, alignItems: 'center', gap: 12 },
-  btnLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 13 },
-  micBtn: { width: 110, height: 110, borderRadius: 55, alignItems: 'center', justifyContent: 'center', borderWidth: 4, borderColor: 'rgba(255,255,255,0.3)', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.5, shadowRadius: 12, elevation: 10 },
-  micBtnListening: { borderColor: '#ff4757', shadowColor: '#ff4757', shadowOpacity: 0.9, elevation: 15 },
-  micIcon: { fontSize: 44 },
+  root: { flex: 1, backgroundColor: colors.background },
+  topSafe:    { position: 'absolute', top: 0, left: 0 },
+  bottomSafe: { position: 'absolute', bottom: 0, left: 0, right: 0, alignItems: 'center' },
+
+  // No-permission fallback
+  noCamera: { backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
+  permBtn: {
+    minHeight: touch.min, alignItems: 'center', gap: spacing.md,
+    backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.primary,
+    borderRadius: radius.lg, paddingHorizontal: spacing.xl, paddingVertical: spacing.xl,
+  },
+  permBtnText: { ...type.label, color: colors.text, textAlign: 'center' },
+
+  // Top left back button
+  topBar: { flexDirection: 'row', paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
+  backBtn: {
+    width: touch.min, height: touch.min, borderRadius: touch.min / 2,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.panel, borderWidth: 1, borderColor: colors.border,
+  },
+
+  // Bottom mic
+  bottomArea: { alignItems: 'center', paddingBottom: spacing.md },
+  micHalo: {
+    width: touch.mic + (MIC_HALO_GAP + 2) * 2, height: touch.mic + (MIC_HALO_GAP + 2) * 2,
+    borderRadius: (touch.mic + (MIC_HALO_GAP + 2) * 2) / 2,
+    borderWidth: 2, borderColor: 'transparent',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  micBtn: {
+    width: touch.mic, height: touch.mic, borderRadius: touch.mic / 2,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: colors.shadow, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35, shadowRadius: 8, elevation: 6,
+  },
+  ringOutline: { borderWidth: 3 },
+  ringSolid:   { borderWidth: 3, borderColor: colors.text },
+  ringThick:   { borderWidth: 6, borderColor: colors.text },
+  ringDashed:  { borderWidth: 3, borderColor: colors.ink, borderStyle: 'dashed' },
 });

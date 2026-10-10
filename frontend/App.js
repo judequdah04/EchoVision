@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import SignUpScreen from './src/screens/SignUpScreen';
@@ -20,6 +21,7 @@ export default function App() {
   if (!initialRoute) return null;
 
   return (
+    <SafeAreaProvider>
     <NavigationContainer>
       <Stack.Navigator
         initialRouteName={initialRoute}
@@ -30,5 +32,6 @@ export default function App() {
         <Stack.Screen name="Camera" component={CameraScreen} />
       </Stack.Navigator>
     </NavigationContainer>
+    </SafeAreaProvider>
   );
 }
