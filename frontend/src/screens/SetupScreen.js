@@ -25,7 +25,6 @@ const COLOR_HEX = {
   yellow:'#eab308', orange:'#f97316', purple:'#a855f7', pink:'#ec4899',
 };
 const SHAPES = ['circle','square','rectangle','triangle'];
-
 const INSTRUCTIONS = {
   english: `Welcome to EchoVision. I am Suji, your AI vision assistant. Here is how to use me.
 
@@ -35,7 +34,17 @@ First, you can add people by going to the Add People button. Point the camera at
 
 Second, set up your sticker by going to the Sticker Shape and Color button. Choose a color and shape for your personal sticker that you will attach to your belongings.
 
-Here are your voice commands. Say Describe to hear a description of your surroundings. Say Recognize to identify people in front of you and their emotions. Say Identify my, followed by the item name and location, to save a personal item. For example: Identify my water bottle in the kitchen. Say Where is my, followed by the item name, to find where you last saved it. Say Find my, followed by the item name, to locate it in real time using your sticker.
+Here are your voice commands.
+
+Say Describe, and I will scan the room and tell you what is around you. I will name the objects I see, tell you whether they are near or far, which direction they are in, and how they relate to each other. I will also warn you about anything that could be in your way.
+
+Say Recognize, and I will tell you who is in front of you. If I know the person, I will say their name, how close they are, and how they seem to be feeling. If I do not know them, I will tell you that too.
+
+Say Identify my, followed by the item name and the room, to save where you left a personal item. I will remember the item, the room, and the time.
+
+Say Where is my, followed by the item name, and I will tell you where and when you last saved it. This works instantly and does not need the camera.
+
+Say Find my, followed by the item name, and I will help you reach it. First I will ask you to slowly scan the room, then I will guide you step by step with directions, and I will warn you about obstacles on the way. When you are close, I will ask you to hold the item up to the camera, and I will check its sticker to confirm that it is yours.
 
 To activate me, say Hey Suji at any time. You can also tap the microphone button on the camera screen to start recording your command. When the phone vibrates once, it means I am ready to listen to your command. Tap the button again to stop recording early.`,
 
@@ -47,7 +56,17 @@ To activate me, say Hey Suji at any time. You can also tap the microphone button
 
 ثانياً، قم بإعداد ملصقك عبر زر Sticker Shape and Color. اختر لوناً وشكلاً للملصق الشخصي الذي ستضعه على أغراضك.
 
-إليك أوامر الصوت. قل Describe لسماع وصف لمحيطك. قل Recognize للتعرف على الأشخاص أمامك ومشاعرهم. قل Identify my متبوعاً باسم الغرض والمكان لحفظ غرض شخصي. مثال: Identify my water bottle in the kitchen. قل Where is my متبوعاً باسم الغرض لمعرفة آخر مكان حفظته فيه. قل Find my متبوعاً باسم الغرض لتحديد موقعه في الوقت الفعلي.
+إليك أوامر الصوت.
+
+قل Describe، وسأفحص الغرفة وأخبرك بما يحيط بك. سأذكر الأشياء التي أراها، وهل هي قريبة أم بعيدة، وفي أي اتجاه تقع، وكيف ترتبط ببعضها. وسأحذرك أيضاً من أي شيء قد يعترض طريقك.
+
+قل Recognize، وسأخبرك من يقف أمامك. إذا كنت أعرف الشخص، فسأذكر اسمه، ومدى قربه منك، وكيف يبدو شعوره. وإذا لم أكن أعرفه، فسأخبرك بذلك أيضاً.
+
+قل Identify my متبوعاً باسم الغرض والغرفة، لحفظ المكان الذي تركت فيه غرضاً شخصياً. سأتذكر الغرض والغرفة والوقت.
+
+قل Where is my متبوعاً باسم الغرض، وسأخبرك أين ومتى حفظته آخر مرة. يعمل هذا الأمر فوراً ولا يحتاج إلى الكاميرا.
+
+قل Find my متبوعاً باسم الغرض، وسأساعدك على الوصول إليه. سأطلب منك أولاً أن تمسح الغرفة ببطء، ثم سأرشدك خطوة بخطوة بالاتجاهات، وسأحذرك من العوائق في الطريق. وعندما تقترب، سأطلب منك أن ترفع الغرض أمام الكاميرا، وسأتحقق من ملصقه للتأكد من أنه يخصك.
 
 لتفعيلي، قل Hey Suji في أي وقت. يمكنك أيضاً الضغط على زر الميكروفون في شاشة الكاميرا لبدء تسجيل أمرك. عندما يهتز الهاتف مرة واحدة، فهذا يعني أنني مستعد للاستماع إلى أمرك. اضغط على الزر مرة أخرى لإيقاف التسجيل مبكراً.`
 };
@@ -93,13 +112,23 @@ export default function SetupScreen({ navigation, route }) {
     try {
       await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true });
       const text = INSTRUCTIONS[lang] || INSTRUCTIONS.english;
-      const res  = await textToSpeech(text, lang);
-      if (res.audio) {
-        await playAudioBase64(res.audio);
-      } else {
-        Alert.alert('Instructions', text);
+      // Split on sentence boundaries (never mid-word), then group sentences into
+      // chunks of up to ~300 characters so each TTS request stays short.
+      const sentences = text.match(/[^.!?؟\n]+[.!?؟]*/g)?.map(s => s.trim()).filter(Boolean) || [];
+      const chunks = [];
+      for (const s of sentences) {
+        const last = chunks.length - 1;
+        if (last >= 0 && chunks[last].length + 1 + s.length <= 300) chunks[last] += ' ' + s;
+        else chunks.push(s);
       }
-    } catch (err) {
+      // Speak each chunk in order; awaiting playback keeps them from overlapping.
+      for (const chunk of chunks) {
+        const res = await textToSpeech(chunk, lang);
+        if (!res?.audio) throw new Error('No audio returned for instructions chunk');
+        await playAudioBase64(res.audio);
+      }
+    } catch (e) {
+      console.error('instructions TTS error:', e);
       Alert.alert('Instructions', INSTRUCTIONS.english);
     } finally {
       setPlayingInstructions(false);
